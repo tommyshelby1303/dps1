@@ -3,6 +3,43 @@
 
 # # DPS
 
+#Caesar Cipher
+encrpytor = {chr(i): i - 97 for i in range(ord('a'), ord('z')+1)}
+decryptor = {i: chr(i + 97) for i in range(26)}
+
+def ceasarcipher(message, key):
+    message = message.lower()
+    ret = ''
+    for i in message:
+        if i in encrpytor:
+            ret += decryptor[(encrpytor[i] + key) % 26]
+        else:
+            ret += i
+    return ret
+
+def ceasardecipher(message, key):
+    message = message.lower()
+    ret = ''
+    for i in message:
+        if i in encrpytor:
+            ret += decryptor[(encrpytor[i] - key) % 26]
+        else:
+            ret += i
+    return ret
+
+ceasarcipher('hit me abc', 1)
+ceasardecipher("iju nf bcd", 1)
+
+#Ciphers
+def additivecipher(message, key):
+    return ''.join([decryptor[(encrpytor[char] + key) % 26] if char in encrpytor else char for char in message.lower()])
+
+def multiplicativecipher(message, key):
+    return ''.join([decryptor[(encrpytor[char] * key) % 26] if char in encrpytor else char for char in message.lower()])
+
+def affinecipher(message, key1, key2):
+    return ''.join([decryptor[(encrpytor[char] * key1 + key2) % 26] if char in encrpytor else char for char in message.lower()])
+
 # Client Login
 
 # In[8]:
