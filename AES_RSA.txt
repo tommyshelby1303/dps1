@@ -1,0 +1,344 @@
+AES
+!pip install cryptography
+
+import socket
+import threading
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives import padding
+import os
+
+CBC:
+#decryption
+def decryption(C:bytes, key:bytes, iv:bytes ) -> str :
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+    decryptor = cipher.decryptor()
+
+    padded_plaintext = decryptor.update(C) + decryptor.finalize()
+
+    unpadder = padding.PKCS7(algorithms.AES.block_size).unpadder()
+    plaintext = unpadder.update(padded_plaintext) + unpadder.finalize()
+
+    return plaintext.decode()
+
+#encryption
+def encryption(plaintext:str, key:bytes) -> (bytes, bytes):
+    iv = os.urandom(16)
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+    encryptor = cipher.encryptor()
+    padder = padding.PKCS7(algorithms.AES.block_size).padder()
+    padded_data = padder.update(plaintext.encode()) + padder.finalize()
+    cipher_text = encryptor.update(padded_data) + encryptor.finalize()
+    return cipher_text, iv
+
+#server
+def start_server():
+    host = "127.0.0.1"
+    port = 65432
+
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind((host, port))
+    server_socket.listen(1)
+
+    print("Server listening ", host, " port")
+    conn, addr = server_socket.accept()
+
+    print("Connected by ", addr)
+
+    key = conn.recv(32)
+    iv = conn.recv(16)
+    cipher_text = conn.recv(1024)
+
+    decrypted_text = decryption(cipher_text, key, iv)
+    print("Decrypted text : ", decrypted_text)
+
+    conn.close()
+
+server_thread = threading.Thread(target=start_server)
+server_thread.start() 
+
+#client
+def start_client():
+    host = "127.0.0.1"
+    port = 65432
+    
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.connect((host, port))
+
+    key = os.urandom(32) #AES-256/8
+    plain_text = "This is a secret message"
+    cipher_text, iv = encryption(plain_text, key)
+
+    client_socket.sendall(key)
+    client_socket.sendall(iv)
+    client_socket.sendall(cipher_text)
+
+    print("Encrypted Text sent : ", cipher_text)
+
+    client_socket.close()
+
+start_client() 
+----------------------------------------------------------------------
+ECB:
+#decryption
+def decryption(C:bytes, key:bytes ) -> str :
+    cipher = Cipher(algorithms.AES(key), modes.ECB())
+    decryptor = cipher.decryptor()
+
+    padded_plaintext = decryptor.update(C) + decryptor.finalize()
+
+    unpadder = padding.PKCS7(algorithms.AES.block_size).unpadder()
+    plaintext = unpadder.update(padded_plaintext) + unpadder.finalize()
+
+    return plaintext.decode()
+
+#encryption
+def encryption(plaintext:str, key:bytes) -> (bytes, bytes):
+    cipher = Cipher(algorithms.AES(key), modes.ECB())
+    encryptor = cipher.encryptor()
+    padder = padding.PKCS7(algorithms.AES.block_size).padder()
+    padded_data = padder.update(plaintext.encode()) + padder.finalize()
+    cipher_text = encryptor.update(padded_data) + encryptor.finalize()
+    return cipher_text
+
+#server
+def start_server():
+    host = "127.0.0.1"
+    port = 65432
+
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind((host, port))
+    server_socket.listen(1)
+
+    print("Server listening ", host, " port")
+    conn, addr = server_socket.accept()
+
+    print("Connected by ", addr)
+
+    key = conn.recv(32)
+    cipher_text = conn.recv(1024)
+
+    decrypted_text = decryption(cipher_text, key)
+    print("Decrypted text : ", decrypted_text)
+
+    conn.close()
+
+server_thread = threading.Thread(target=start_server)
+server_thread.start() 
+
+#client
+def start_client():
+    host = "127.0.0.1"
+    port = 65432
+    
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.connect((host, port))
+
+    key = os.urandom(32) #AES-256/8
+    plain_text = "This is a secret message"
+    cipher_text = encryption(plain_text, key)
+
+    client_socket.sendall(key)
+    client_socket.sendall(cipher_text)
+
+    print("Encrypted Text sent : ", cipher_text)
+
+    client_socket.close()
+
+start_client() 
+------------------------------------------------------------------------
+CFB:
+#decryption
+def decryption(C:bytes, key:bytes, iv:bytes ) -> str :
+    cipher = Cipher(algorithms.AES(key), modes.CFB(iv))
+    decryptor = cipher.decryptor()
+
+    plaintext = decryptor.update(C) + decryptor.finalize()
+
+    return plaintext.decode()
+
+#encryption
+def encryption(plaintext:str, key:bytes) -> (bytes, bytes, bytes):
+    iv = os.urandom(16)
+    cipher = Cipher(algorithms.AES(key), modes.CFB(iv))
+    encryptor = cipher.encryptor()
+    cipher_text = encryptor.update(plaintext.encode()) + encryptor.finalize()
+    return cipher_text, iv
+
+#server
+def start_server():
+    host = "127.0.0.1"
+    port = 65432
+
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind((host, port))
+    server_socket.listen(1)
+
+    print("Server listening ", host, " port")
+    conn, addr = server_socket.accept()
+
+    print("Connected by ", addr)
+
+    key = conn.recv(32)
+    iv = conn.recv(16)
+    cipher_text = conn.recv(1024)
+
+    decrypted_text = decryption(cipher_text, key, iv)
+    print("Decrypted text : ", decrypted_text)
+
+    conn.close()
+
+server_thread = threading.Thread(target=start_server)
+server_thread.start()  
+
+#client
+def start_client():
+    host = "127.0.0.1"
+    port = 65432
+    
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.connect((host, port))
+
+    key = os.urandom(32) #AES-256/8
+    plain_text = "My friend is XYZ"
+    cipher_text, iv = encryption(plain_text, key)
+
+    client_socket.sendall(key)
+    client_socket.sendall(iv)
+    client_socket.sendall(cipher_text)
+
+    print("Encrypted Text sent : ", cipher_text)
+
+    client_socket.close()
+
+start_client() 
+--------------------------------------------------------------------------------
+
+RSA:
+!pip install rsa
+import rsa
+
+def start_server():
+    host = "127.0.0.1"
+    port = 65432
+
+    public_key, priv_key = rsa.newkeys(512)
+    
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind((host, port))
+    server_socket.listen(1)
+    print("Server started listening, port", port)
+
+    conn, addr = server_socket.accept()
+
+    conn.send(public_key.save_pkcs1())
+
+    C = conn.recv(1024)
+
+    decrypttext = rsa.decrypt(C, priv_key).decode()
+    print("Decrypted : ",decrypttext)
+
+    conn.close()
+
+server_thread = threading.Thread(target=start_server)
+server_thread.start()  
+
+def start_client():
+    host = "127.0.0.1"
+    port = 65432
+
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.connect((host, port))
+
+    # generate keys
+    public, priv = rsa.newkeys(512)
+
+    #public
+    public_key_data = client_socket.recv(1024)
+    server_public_key = rsa.PublicKey.load_pkcs1(public_key_data)
+
+    plaintext = "Hello World"
+    encryptedtext = rsa.encrypt(plaintext.encode(), server_public_key)
+    print("Encryption : ", encryptedtext)
+
+    client_socket.send(encryptedtext)
+
+    client_socket.close()
+
+start_client()
+
+-------------------------------------------------------------------------------------------------
+
+# RSA - Cyclic Attacks and chosen ciphertext attack
+
+# In[3]:
+
+
+import random
+import math
+
+def encrypt(plaintext, e, n):
+    return pow(plaintext, e, n)
+
+def cyclic_attack(ciphertext, e, n):
+    current = ciphertext
+    cycle = [current]
+    
+    while True:
+        current = encrypt(current, e, n)
+        if current in cycle:
+            break
+        cycle.append(current)
+        
+    return cycle[-2]
+
+# Given parameters
+e = 3
+n = 35
+intercepted_ciphertext = 22
+
+plaintext = cyclic_attack(intercepted_ciphertext, e, n)
+print(f"Plaintext : {plaintext}")
+
+--------------------------------------------------------------------------------------------
+
+# In[6]:
+
+
+def encrypt(plaintext, e, n):
+    return pow(plaintext, e, n)
+
+def decrypt(ciphertext, d, n):
+    return pow(ciphertext, d, n)
+
+def chosen_cipher_attack(intercepted_ciphertext, e, n, bob_decrypt):
+    X = random.randint(1, n-1)
+    while math.gcd(X, n) != 1:
+        X = random.randint(1, n-1)
+        
+    Y = (intercepted_ciphertext * pow(X, e, n)) % n
+    Z = bob_decrypt(Y)
+    plaintext =(Z * pow(X, -1, n)) % n
+    
+    return plaintext
+
+def bob_decrypt(ciphertext):
+    d = 103
+    return decrypt(ciphertext, d, n)
+
+# Given parameters
+e = 7
+n = 143
+intercepted_ciphertext = 57
+
+recovered_plaintext = chosen_cipher_attack(intercepted_ciphertext, e, n, bob_decrypt)
+plaintext = 8
+
+if recovered_plaintext == plaintext:
+    print("Success..")
+else:
+    print("Failure..")
+
+-------------------------------------------------------------------------------------------------
+
+
+
