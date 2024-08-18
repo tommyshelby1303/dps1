@@ -1,0 +1,416 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# # DPS
+
+# Client Login
+
+# In[8]:
+
+
+import itertools
+import time
+
+user_db = {
+    'user1' : 'bjhscv'
+}
+
+def client_login(username, password):
+    return server_login(username, password)
+
+def server_login(username, password):
+    if username in user_db and user_db[username] == password:
+        return True
+    return False
+
+def brute_force(username):
+    print(f"Starting Brute-Force attack for username : {username}")
+    start_time = time.time()
+    
+    for password in itertools.product('abcdefghijklmnopqrstuvwxyz', repeat = 6):
+        password = ''.join(password)
+        if client_login(username, password):
+            end_time = time.time()
+            print(f"Password found : {password}")
+            print(f"Time taken : {end_time - start_time:.2f} seconds")
+            return
+            
+    print("Password not found !!")
+    return None
+
+username = 'user1'
+brute_force(username)
+
+
+# Double Transposition Cypher
+
+# In[12]:
+
+
+def single_encrypt(message, key):
+    message = message.replace(" ", "")
+    num_rows = -(-len(message) // len(key))
+    grid = [["" for _ in range(len(key))] for _ in range(num_rows)]
+    
+    message_index = 0
+    for row in range(num_rows):
+        for col in range(len(key)):
+            if message_index < len(message):
+                grid[row][col] = message[message_index]
+                message_index += 1
+    
+    ciphertext = ''
+    for k in sorted(set(key)):
+        col = key.index(k)
+        for row in range(num_rows):
+            if grid[row][col]:
+                ciphertext += grid[row][col]
+    
+    return ciphertext
+
+def double_transposition(message, key):
+    first_encryption = single_encrypt(message, key)
+    second_encryption = single_encrypt(first_encryption, key)
+    return second_encryption
+    
+message = "Enemy attacks tonight"
+key = "31452"
+double_transposition(message, key)
+
+
+# AES Cipher
+
+# In[13]:
+
+
+get_ipython().system('pip install pycryptodome')
+
+
+# In[20]:
+
+
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
+from Crypto.Random import get_random_bytes
+import binascii
+
+def encrypt(plaintext, key):
+    iv = get_random_bytes(AES.block_size)
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    padded_plaintext = pad(plaintext, AES.block_size)
+    ciphertext = cipher.encrypt(padded_plaintext)
+    return iv+ciphertext
+
+def decrypt(ciphertext, key):
+    iv = ciphertext[:AES.block_size]
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    padded_plaintext = cipher.decrypt(ciphertext[AES.block_size:])
+    plaintext = unpad(padded_plaintext, AES.block_size)
+    return plaintext
+
+key = get_random_bytes(32)
+plaintext = b"This is a secret message. AES encryption in Python!"
+
+print(f"Original Plaintext : {plaintext}")
+print(f"Plaintext in hex : {binascii.hexlify(plaintext)}")
+print()
+
+ciphertext = encrypt(plaintext, key)
+
+print(f"Encrypted ciphertext in hex : {binascii.hexlify(ciphertext)}")
+print()
+
+decrypted_ciphertext = decrypt(ciphertext, key)
+
+print(f"Decrypted Ciphertext : {decrypted_ciphertext}")
+print(f"Decrypted Ciphertext in hex : {binascii.hexlify(decrypted_ciphertext)}")
+print()
+
+if plaintext == decrypted_ciphertext:
+    print("Success.. Results Match..")
+else:
+    print("The results are not a match..")
+
+
+# RSA - Cyclic Attacks and chosen ciphertext attack
+
+# In[3]:
+
+
+import random
+import math
+
+def encrypt(plaintext, e, n):
+    return pow(plaintext, e, n)
+
+def cyclic_attack(ciphertext, e, n):
+    current = ciphertext
+    cycle = [current]
+    
+    while True:
+        current = encrypt(current, e, n)
+        if current in cycle:
+            break
+        cycle.append(current)
+        
+    return cycle[-2]
+
+# Given parameters
+e = 3
+n = 35
+intercepted_ciphertext = 22
+
+plaintext = cyclic_attack(intercepted_ciphertext, e, n)
+print(f"Plaintext : {plaintext}")
+
+
+# In[6]:
+
+
+def encrypt(plaintext, e, n):
+    return pow(plaintext, e, n)
+
+def decrypt(ciphertext, d, n):
+    return pow(ciphertext, d, n)
+
+def chosen_cipher_attack(intercepted_ciphertext, e, n, bob_decrypt):
+    X = random.randint(1, n-1)
+    while math.gcd(X, n) != 1:
+        X = random.randint(1, n-1)
+        
+    Y = (intercepted_ciphertext * pow(X, e, n)) % n
+    Z = bob_decrypt(Y)
+    plaintext =(Z * pow(X, -1, n)) % n
+    
+    return plaintext
+
+def bob_decrypt(ciphertext):
+    d = 103
+    return decrypt(ciphertext, d, n)
+
+# Given parameters
+e = 7
+n = 143
+intercepted_ciphertext = 57
+
+recovered_plaintext = chosen_cipher_attack(intercepted_ciphertext, e, n, bob_decrypt)
+plaintext = 8
+
+if recovered_plaintext == plaintext:
+    print("Success..")
+else:
+    print("Failure..")
+
+
+# # NS
+# 
+# Erdos-Renyi graph with average degree as parameters
+
+# In[11]:
+
+
+import networkx as nx
+import matplotlib.pyplot as plt
+
+def generate_and_visualize_network(N, k_avg):
+    p = k_avg / (N - 1)
+    G = nx.erdos_renyi_graph(N, p)
+    plt.figure(figsize=(8, 6))
+    ax = plt.gca()  # Get the current axes
+    nx.draw(G, ax=ax, node_size=20, node_color='lightblue', with_labels=False)
+    plt.title(f"N={N}, <k>={k_avg}")
+    plt.show()
+
+N = 500
+for k_avg in [0.8, 1, 8]:
+    generate_and_visualize_network(N, k_avg)
+
+
+# Calculate Avg Degree for one component of a ER model, i.e. for example, only for blue out of blue and red components
+
+# In[7]:
+
+
+def calculate_degrees(N, p, q):
+    avg_deg_blue = p*(N-1)
+    avg_deg_full = p*(N-1) + q*N
+    return avg_deg_blue, avg_deg_full
+
+N = 1000  # Example value
+p = 0.01  # Example value
+q = 0.005  # Example value
+
+k_blue_avg, k_full_avg = calculate_degrees(N, p, q)
+print(f"Average degree of blue subnetwork: {k_blue_avg:.2f}")
+print(f"Average degree of full network: {k_full_avg:.2f}")
+
+
+# Minimal p and q for one component:
+# 
+# For a G(N, p) model, the critical probability for connectivity is approximately ln(N) / N.
+
+# In[10]:
+
+
+import math
+
+def minimal_prob(N):
+    p_min = math.log(N)/N
+    q_min = math.log(2*N)/(2*N)
+    return p_min, q_min
+
+p_min, q_min = minimal_prob(N)
+print(f"Minimal p: {p_min:.4f}")
+print(f"Minimal q: {q_min:.4f}")
+
+
+# Network with purple nodes:
+# 
+# Fraction of purple nodes for interactivity:
+
+# In[12]:
+
+
+def fraction_purple(N, p):
+    k_avg = p*(N-1)
+    f_min = 1 / math.sqrt(k_avg)
+    return f_min
+
+N = 1000
+p = 0.01
+f_min = fraction_purple(N, p)
+print(f"Minimum fraction of purple nodes: {f_min:.4f}")
+
+
+# Generating Power-Law networks
+
+# In[22]:
+
+
+import networkx as nx
+import numpy
+
+def generate_network(N, gamma):
+    degree_distribution = np.random.zipf(gamma, N)
+    if sum(degree_distribution) % 2 != 0:
+        degree_distribution[np.argmax(degree_distribution)] -= 1
+        
+    G = nx.configuration_model(degree_distribution)
+    G_simple = nx.Graph(G)
+    G_simple.remove_edges_from(nx.selfloop_edges(G_simple))
+    
+    return G, G_simple
+
+def calculate_percentage(G, G_simple):
+    num_edges = G.number_of_edges()
+    num_multi_links = num_edges - G_simple.number_of_edges()
+    
+    num_self_loop = sum(1 for u,v in G.edges() if u == v)
+    
+    per_multi_links = (num_multi_links/num_edges)*100
+    per_self_loop = (num_self_loop/num_edges)*100
+    
+    return per_multi_links, per_self_loop
+
+def print_results(N_values, gamma_values):
+    for gamma in gamma_values:
+        print(f"Results for γ = {gamma}:")
+        
+        for N in N_values:
+            G, G_simple = generate_network(N, gamma)
+            perc_multi_links, perc_self_loops = calculate_percentage(G, G_simple)
+            
+            print(f"Network Size (N): {N}")
+            print(f"  Percentage of Multi-links: {perc_multi_links:.2f}%")
+            print(f"  Percentage of Self-loops: {perc_self_loops:.2f}%\n")
+
+N_values = [10**3, 10**4, 10**5]
+gamma_values = [2.2, 3.0]
+print_results(N_values, gamma_values)
+
+
+# Generate BA Networks - 
+# 
+# 
+#     measure_degree_distribution
+#     fit_power_law
+#     measure_clustering_coefficient
+
+# In[23]:
+
+
+def generate_ba_network(N, m):
+    G = nx.complete_graph(m)
+    while G.number_of_nodes() < N:
+        G = nx.barabasi_albert_graph(G.number_of_nodes() + 1, m, initial_graph=G)
+    return G
+
+def measure_degree_distribution(G):
+    degrees = [d for n, d in G.degree()]
+    return Counter(degrees)
+
+def fit_power_law(x, y):
+    logx = np.log(x)
+    logy = np.log(y)
+    coeffs = np.polyfit(logx, logy, 1)
+    return -coeffs[0]
+
+def plot_degree_distribution(distributions, N_values):
+    plt.figure(figsize=(10, 6))
+    for N, dist in zip(N_values, distributions):
+        x = list(dist.keys())
+        y = [dist[k] / sum(dist.values()) for k in x]
+        plt.loglog(x, y, 'o-', label=f'N = {N}')
+
+        # Fit power-law
+        gamma = fit_power_law(x, y)
+        print(f"N = {N}, γ = {gamma:.2f}")
+
+    plt.xlabel('Degree (k)')
+    plt.ylabel('P(k)')
+    plt.legend()
+    plt.title('Degree Distribution at Different Network Sizes')
+    plt.show()
+
+def plot_cumulative_distribution(distributions, N_values):
+    plt.figure(figsize=(10, 6))
+    for N, dist in zip(N_values, distributions):
+        x = sorted(dist.keys())
+        y = [sum(dist[k] for k in dist if k >= degree) / sum(dist.values()) for degree in x]
+        plt.loglog(x, y, '-', label=f'N = {N}')
+
+    plt.xlabel('Degree (k)')
+    plt.ylabel('P(K ≥ k)')
+    plt.legend()
+    plt.title('Cumulative Degree Distribution')
+    plt.show()
+
+def measure_clustering_coefficient(N_values, m):
+    clustering_coeffs = []
+    for N in N_values:
+        G = generate_ba_network(N, m)
+        clustering_coeffs.append(nx.average_clustering(G))
+
+    plt.figure(figsize=(10, 6))
+    plt.loglog(N_values, clustering_coeffs, 'o-')
+    plt.xlabel('N')
+    plt.ylabel('Average Clustering Coefficient')
+    plt.title('Clustering Coefficient vs. Network Size')
+    plt.show()
+
+# Generate BA network and analyze
+N_values = [10**2, 10**3, 10**4]
+m = 4
+
+distributions = []
+for N in N_values:
+    G = generate_ba_network(N, m)
+    distributions.append(measure_degree_distribution(G))
+
+plot_degree_distribution(distributions, N_values)
+plot_cumulative_distribution(distributions, N_values)
+
+# Measure clustering coefficient
+N_values_clustering = np.logspace(2, 4, 10).astype(int)
+measure_clustering_coefficient(N_values_clustering, m)
+
